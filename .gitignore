@@ -37,3 +37,6 @@ Thumbs.db
 # Generated QR Outputs
 qr_outputs/
 
+# Agent Configurations & MCP Secrets
+.agents/mcp_config.json
+.agents/*.env
