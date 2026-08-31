@@ -15,9 +15,11 @@ POCblockchain/
 │
 ├── api/                                     # Módulo Backend (Express.js + Ethers.js)
 │   ├── .env.example                         # Plantilla de variables de entorno de la API
-│   ├── package.json                         # Dependencias (express, ethers, cors, morgan, etc.)
+│   ├── package.json                         # Dependencias (express, ethers, cors, qrcode, morgan, etc.)
 │   ├── pnpm-lock.yaml                       # Archivo de bloqueo de dependencias (pnpm)
 │   ├── README.md                            # Documentación específica de la API
+│   ├── scripts/
+│   │   └── generate_qr.js                   # Generador automatizado de códigos QR GS1 (PNG, SVG, Terminal)
 │   └── src/
 │       ├── config/index.js                  # Configuración centralizada de variables y RPC
 │       ├── controllers/
@@ -28,7 +30,7 @@ POCblockchain/
 │       │   └── healthRoutes.js             # Definición de rutas REST (/api/health)
 │       ├── services/
 │       │   └── blockchainService.js        # Servicio base ethers.js para interactuar con la Web3
-│       └── server.js                        # Punto de entrada principal y servidor Express
+│       └── server.js                        # Entrada principal (Express, GS1 Resolver, Content Negotiation)
 │
 └── blockchain/                              # Módulo Smart Contracts (Solidity + Hardhat)
     ├── .env.example                         # Plantilla de variables para RPC, llaves y Etherscan
@@ -52,8 +54,9 @@ POCblockchain/
   - **Hardhat (^2.22.8):** Entorno de desarrollo, compilación, pruebas y redes locales.
   - **Hardhat Toolbox (@nomicfoundation/hardhat-toolbox):** Suite de herramientas para Ether.js, Chai y Mocha.
 - **Backend & API:**
-  - **Node.js & Express.js (^4.19.2):** Servidor HTTP y enrutamiento REST.
+  - **Node.js & Express.js (^4.19.2):** Servidor HTTP, enrutamiento REST y resolución GS1 Digital Link.
   - **Ethers.js (v6.13.2):** Abstracción y cliente Web3 para conexión RPC y gestión de wallets.
+  - **QRCode (^1.5.4):** Generación de códigos QR en alta resolución (PNG, SVG vectorial y vista previa en terminal).
   - **Morgan & CORS:** Middleware para logging de peticiones HTTP y habilitación de peticiones cruzadas.
   - **Nodemon:** Hot-reloading durante el desarrollo.
 
@@ -77,14 +80,16 @@ POCblockchain/
     - `MessageUpdated(address indexed updater, string newMessage)`
     - `CounterIncremented(address indexed updater, uint256 newCounter)`
 
-### 2. API REST (`/api`)
-- **`BlockchainService` (`src/services/blockchainService.js`)**:
-  - `getCurrentBlock()`: Retorna el número de bloque actual del nodo configurado.
-  - `getBalance(address)`: Retorna el saldo en ETH/token nativo formatado.
-  - Configuración flexible de `JsonRpcProvider` y `Wallet` firmante según variables de entorno.
-- **Endpoints:**
-  - `GET /`: Endpoint raíz con información básica y lista de endpoints disponibles.
-  - `GET /api/health`: Estado de salud de la API (`online`, `uptime`, `timestamp`, `service`).
+### 2. API REST & Herramientas (`/api`)
+- **`server.js`**:
+  - **Negociación de Contenido (`Accept` header)**:
+    - Retorna una **interfaz HTML visual responsiva** con tarjetas interactivas cuando se accede desde un navegador web (`text/html`).
+    - Retorna una **estructura JSON/JSON-LD** limpia cuando es consultada programáticamente por clientes REST o inspectores API (`application/json`).
+  - **Extracción Dinámica de Endpoints (`getDynamicEndpoints`)**: Lista automáticamente todas las rutas registradas en el servidor Express.
+  - **GS1 Digital Link Resolver (`GET /01/:gtin/10/:lote`)**: Resuelve URLs estandarizadas GS1 para Pasaportes Digitales de Producto (DPP) consultando la prueba inmutable en la Blockchain (DOP Miel del Bierzo).
+- **`scripts/generate_qr.js`**:
+  - Generador automatizado de códigos QR para la URL estandarizada GS1 Digital Link.
+  - Exporta automáticamente versiones en alta definición PNG (`600px`), gráficos vectoriales SVG y renderizado ascii directo en la terminal de la consola.
 
 ---
 
@@ -154,6 +159,12 @@ npm run dev
 
 El servidor API estará disponible en `http://localhost:3000`.
 
+### Paso 4: Generar Códigos QR GS1 Digital Link
+```bash
+cd api
+npm run generate:qr
+```
+
 ---
 
 ##  Comandos Rápidos
@@ -167,4 +178,6 @@ El servidor API estará disponible en `http://localhost:3000`.
 | **blockchain** | `npm run deploy:sepolia` | Despliega los contratos en la red Sepolia |
 | **api** | `npm run dev` | Inicia el servidor API con hot-reloading (nodemon) |
 | **api** | `npm run start` | Inicia el servidor API en modo producción |
+| **api** | `npm run generate:qr` | Genera los códigos QR GS1 (PNG, SVG, Terminal) |
+
 

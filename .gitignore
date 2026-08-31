@@ -33,3 +33,7 @@ coverage.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated QR Outputs
+qr_outputs/
+
