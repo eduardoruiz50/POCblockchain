@@ -1,22 +1,35 @@
-# API POCblockchain (Express.js)
+# API POCblockchain (Express.js & GS1 Digital Link)
 
-Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST e interactúa con contratos inteligentes en la red Blockchain utilizando `ethers.js`.
+Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, implementa la resolución del estándar **GS1 Digital Link** para Pasaportes Digitales de Producto (DPP) e interactúa con contratos inteligentes en la red Blockchain utilizando `ethers.js (v6)`.
+
+---
+
+## 🌐 Entornos de Ejecución
+
+- **Producción (Render):** [https://dpp-mieldelbierzo.onrender.com](https://dpp-mieldelbierzo.onrender.com)
+- **Desarrollo Local:** `http://localhost:3000`
+
+---
 
 ## Estructura
 
 ```text
 api/
+├── scripts/
+│   └── generate_qr.js      # Generador automatizado de códigos QR GS1 (PNG, SVG, Consola)
 ├── src/
-│   ├── config/             # Configuración centralizada
-│   ├── controllers/        # Controladores de las rutas
-│   ├── middlewares/        # Middlewares de Express
-│   ├── routes/             # Definición de rutas
-│   ├── services/           # Lógica de conexión con Blockchain
-│   └── server.js           # Inicialización del servidor
+│   ├── config/             # Configuración centralizada de variables de entorno y RPC
+│   ├── controllers/        # Controladores de las rutas REST
+│   ├── middlewares/        # Middlewares de Express (CORS, Morgan, ErrorHandler)
+│   ├── routes/             # Definición de rutas (/api/health)
+│   ├── services/           # Lógica Web3 de conexión con Blockchain
+│   └── server.js           # Inicialización del servidor, GS1 Resolver y Content Negotiation
 ├── .env.example
 ├── package.json
 └── README.md
 ```
+
+---
 
 ## Instalación y Ejecución
 
@@ -30,7 +43,7 @@ api/
    cp .env.example .env
    ```
 
-3. Ejecutar en modo desarrollo:
+3. Ejecutar en modo desarrollo (hot-reloading):
    ```bash
    npm run dev
    ```
@@ -40,7 +53,16 @@ api/
    npm start
    ```
 
+5. Generar códigos QR para GS1 Digital Link:
+   ```bash
+   npm run generate:qr
+   ```
+
+---
+
 ## Endpoints Principales
 
-- `GET /`: Mensaje de bienvenida y listado básico de endpoints.
-- `GET /api/health`: Estado de salud de la API.
+- `GET /`: Mensaje de bienvenida con **negociación de contenido** (Dashboard HTML visual para navegadores / Payload JSON con listado dinámico de endpoints para APIs).
+- `GET /api/health`: Estado de salud, tiempo de actividad (*uptime*) y diagnóstico del servidor.
+- `GET /01/:gtin/10/:lote`: **GS1 Digital Link Resolver** - Consulta y verificación inmutable del Pasaporte Digital de Producto (DPP) en la Blockchain de la DOP Miel del Bierzo (soporta HTML consumidor y JSON/JSON-LD estructurado).
+

@@ -4,16 +4,27 @@ Prueba de Concepto (POC) modular que integra una API REST construida en **Node.j
 
 ---
 
+## 🌐 Producción (Desplegado en Render)
+
+- **URL de Producción:** [https://dpp-mieldelbierzo.onrender.com](https://dpp-mieldelbierzo.onrender.com)
+- **Estado del Servicio:** `online`
+- **Configuración de Despliegue:** Render Web Service (Node.js, Frankfurt) con integración continua (CI/CD auto-deploy) conectada a la rama `master` (`rootDir: "api"`).
+
+---
+
 ##  Estructura del Proyecto
 
 El repositorio está organizado en una arquitectura monorepo desacoplada en dos módulos principales:
 
 ```text
 POCblockchain/
-├── .gitignore
+├── .gitignore                               # Reglas de exclusión de seguridad (.env, .agents/mcp_config.json, qr_outputs)
 ├── README.md                                # Documentación principal del proyecto
 │
-├── api/                                     # Módulo Backend (Express.js + Ethers.js)
+├── .agents/                                 # Configuración de Agentes IA y MCP Servers
+│   └── mcp_config.example.json              # Plantilla pública segura para integración con Render MCP
+│
+├── api/                                     # Módulo Backend (Express.js + Ethers.js + GS1 Resolver)
 │   ├── .env.example                         # Plantilla de variables de entorno de la API
 │   ├── package.json                         # Dependencias (express, ethers, cors, qrcode, morgan, etc.)
 │   ├── pnpm-lock.yaml                       # Archivo de bloqueo de dependencias (pnpm)
@@ -85,15 +96,15 @@ POCblockchain/
   - **Negociación de Contenido (`Accept` header)**:
     - Retorna una **interfaz HTML visual responsiva** con tarjetas interactivas cuando se accede desde un navegador web (`text/html`).
     - Retorna una **estructura JSON/JSON-LD** limpia cuando es consultada programáticamente por clientes REST o inspectores API (`application/json`).
-  - **Extracción Dinámica de Endpoints (`getDynamicEndpoints`)**: Lista automáticamente todas las rutas registradas en el servidor Express.
+  - **Extracción Dinámica de Endpoints (`getDynamicEndpoints`)**: Lista automáticamente todas las rutas registradas en el servidor Express en tiempo real.
   - **GS1 Digital Link Resolver (`GET /01/:gtin/10/:lote`)**: Resuelve URLs estandarizadas GS1 para Pasaportes Digitales de Producto (DPP) consultando la prueba inmutable en la Blockchain (DOP Miel del Bierzo).
 - **`scripts/generate_qr.js`**:
-  - Generador automatizado de códigos QR para la URL estandarizada GS1 Digital Link.
+  - Generador automatizado de códigos QR apuntando al dominio de producción en Render (`https://dpp-mieldelbierzo.onrender.com`).
   - Exporta automáticamente versiones en alta definición PNG (`600px`), gráficos vectoriales SVG y renderizado ascii directo en la terminal de la consola.
 
 ---
 
-##  Variables de Entorno
+## 🔒 Seguridad de Credenciales y Variables de Entorno
 
 ### Módulo `api/.env`
 ```ini
@@ -111,6 +122,9 @@ MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
 PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000000
 ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
 ```
+
+> [!IMPORTANT]
+> **Protección de Llaves Sensibles:** Los archivos de credenciales como `.env` y `.agents/mcp_config.json` (que contienen claves privadas de wallets o API Keys de Render) están protegidos y excluidos explícitamente en el archivo `.gitignore` para evitar su publicación accidental en el repositorio remoto.
 
 ---
 
@@ -157,7 +171,7 @@ cp .env.example .env
 npm run dev
 ```
 
-El servidor API estará disponible en `http://localhost:3000`.
+El servidor API estará disponible localmente en `http://localhost:3000`.
 
 ### Paso 4: Generar Códigos QR GS1 Digital Link
 ```bash
@@ -179,5 +193,6 @@ npm run generate:qr
 | **api** | `npm run dev` | Inicia el servidor API con hot-reloading (nodemon) |
 | **api** | `npm run start` | Inicia el servidor API en modo producción |
 | **api** | `npm run generate:qr` | Genera los códigos QR GS1 (PNG, SVG, Terminal) |
+
 
 
