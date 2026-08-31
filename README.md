@@ -6,29 +6,32 @@ Prueba de Concepto (POC) que integra una API REST construida en **Express.js** c
 
 ```text
 POCblockchain/
-├── api/                # Backend API en Express.js
-│   ├── src/
-│   │   ├── config/         # Configuración y variables de entorno
-│   │   ├── controllers/    # Controladores de peticiones
-│   │   ├── middlewares/    # Middlewares (ej. manejo de errores)
-│   │   ├── routes/         # Definición de rutas REST
-│   │   ├── services/       # Lógica de negocio e interacción con Blockchain
-│   │   └── server.js       # Punto de entrada de la aplicación Express
-│   ├── .env.example
-│   ├── package.json
-│   └── README.md
-│
-├── blockchain/         # Entorno de contratos inteligentes en Solidity
-│   ├── contracts/          # Smart Contracts (.sol)
-│   ├── scripts/            # Scripts de despliegue y tareas Hardhat
-│   ├── test/               # Pruebas unitarias de contratos
-│   ├── hardhat.config.js   # Configuración de Hardhat
-│   ├── .env.example
-│   ├── package.json
-│   └── README.md
-│
 ├── .gitignore
-└── README.md
+├── README.md
+│
+├── api/                                    # Módulo Backend (Express.js)
+│   ├── .env.example                        # Variables de entorno de ejemplo
+│   ├── package.json                        # Dependencias (express, ethers, cors, etc.)
+│   ├── README.md
+│   └── src/
+│       ├── config/index.js                 # Configuración de variables y red
+│       ├── controllers/healthController.js # Controlador de estado
+│       ├── middlewares/errorHandler.js     # Manejador global de excepciones
+│       ├── routes/healthRoutes.js          # Definición de rutas REST (/api/health)
+│       ├── services/blockchainService.js   # Wrapper con ethers.js para interactuar con la red
+│       └── server.js                       # Entrada y servidor Express
+│
+└── blockchain/                             # Módulo Smart Contracts (Solidity + Hardhat)
+    ├── .env.example                        # Variables para RPC, llaves y Etherscan
+    ├── package.json                        # Dependencias de Hardhat y Toolbox
+    ├── hardhat.config.js                   # Configuración del compilador y redes
+    ├── README.md
+    ├── contracts/
+    │   └── SampleContract.sol              # Contrato base de ejemplo en Solidity ^0.8.24
+    ├── scripts/
+    │   └── deploy.js                       # Script de despliegue automatizado
+    └── test/
+        └── SampleContract.test.js          # Suite de pruebas unitarias
 ```
 
 ## Primeros Pasos
