@@ -23,7 +23,7 @@ api/
 │   ├── middlewares/        # Middlewares de Express (CORS, Morgan, ErrorHandler)
 │   ├── routes/             # Definición de rutas (/api/health)
 │   ├── services/           # Lógica Web3 de conexión con Blockchain
-│   └── server.js           # Inicialización del servidor, GS1 Resolver y Content Negotiation
+│   └── server.js           # Inicialización del servidor y registro de rutas/middlewares
 ├── .env.example
 ├── package.json
 └── README.md
@@ -65,4 +65,6 @@ api/
 - `GET /`: Mensaje de bienvenida con **negociación de contenido** (Dashboard HTML visual para navegadores / Payload JSON con listado dinámico de endpoints para APIs).
 - `GET /api/health`: Estado de salud, tiempo de actividad (*uptime*) y diagnóstico del servidor.
 - `GET /01/:gtin/10/:lote`: **GS1 Digital Link Resolver** - Consulta y verificación inmutable del Pasaporte Digital de Producto (DPP) en la Blockchain de la DOP Miel del Bierzo (soporta HTML consumidor y JSON/JSON-LD estructurado).
+- `GET /api/v1/siex/explotacion/:id`: **Mock SIEX** - Simulación del Sistema de Información de Explotaciones Agrícolas en España.
+- `GET /v1/operators/:id`: **Mock TRACES NT** - Simulación del Trade Control and Expert System New Technology de la UE.
 
