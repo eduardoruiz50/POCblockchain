@@ -1,38 +1,22 @@
 const crypto = require('crypto');
-// ============================================================================
-// BASE DE DATOS LOCAL / MOCK BLOCKCHAIN (Para desarrollo local)
-// ============================================================================
-const dppRegistryDB = {};
+const blockchainService = require('../services/blockchainService');
 
 // Simulación de conexión IPFS (Devuelve un CID único simulado)
 async function uploadToIPFS(metadataObject) {
     const jsonString = JSON.stringify(metadataObject);
     const hash = crypto.createHash('sha256').update(jsonString).digest('hex');
-    // Formato simulación CIDv1 IPFS
     return `bafybeig${hash.substring(0, 38)}`;
 }
 
-// Simulación de interacción con Smart Contract (Transacción Write)
-async function mintDPPOnBlockchain(loteId, ipfsCID, regaCode) {
-    // Calcula hash de evidencia para privacidad en blockchain
-    const regaHash = crypto.createHash('sha256').update(regaCode).digest('hex');
-
-    return {
-        txHash: "0x" + crypto.randomBytes(32).toString('hex'),
-        tokenId: Math.floor(1000 + Math.random() * 9000),
-        blockNumber: 1928301,
-        status: "PENDIENTE_CERTIFICACION", // Estado inicial de la Fase 1
-        regaHashProof: `0x${regaHash}`,
-        ipfsCID: ipfsCID
-    };
-}
+// Fallback en memoria si la blockchain no está disponible o no hay credenciales configuradas
+const localFallbackDB = {};
 
 // ============================================================================
 // ENDPOINT FASE 1: REGISTRO EN ORIGEN
 // ============================================================================
 exports.registerFase1 = async (req, res) => {
     try {
-        const { gtin, loteId, regaCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg, cantidadTarros } = req.body;
+        const { gtin, loteId, regaCode, tracesCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg, cantidadTarros } = req.body;
 
         // 1. Validaciones básicas de entrada
         if (!loteId || !regaCode || !gtin) {
@@ -42,6 +26,7 @@ exports.registerFase1 = async (req, res) => {
             });
         }
 
+        const totalTarros = Number(cantidadTarros) || 1;
         console.log(`\n🍯 [FASE 1] Registrando cosecha para el Lote: ${loteId}...`);
 
         // 2. Construcción del objeto JSON-LD estandarizado
@@ -51,35 +36,73 @@ exports.registerFase1 = async (req, res) => {
             "issuanceDate": new Date().toISOString(),
             "credentialSubject": {
                 "gtin": gtin,
-                "cantidadTarros": cantidadTarros, // Ej: 500 tarros
+                "cantidadTarros": totalTarros,
                 "batchNumber": loteId,
-                "productName": `Miel de ${tipoFloral} del Bierzo`,
+                "productName": `Miel de ${tipoFloral || 'Castaño'} del Bierzo`,
                 "origin": {
                     "regaCode": regaCode,
-                    "locationName": nombreColmenar,
-                    "coordinates": { latitude: latitud, longitude: longitud },
+                    "tracesCode": tracesCode || 'ES-BIO-001-TEST',
+                    "locationName": nombreColmenar || 'Colmenar El Bierzo',
+                    "coordinates": { latitude: latitud || 42.55, longitude: longitud || -6.59 },
                     "comarca": "El Bierzo"
                 },
                 "harvest": {
                     "harvestDate": new Date().toISOString().split('T')[0],
-                    "weightKg": pesoKg,
-                    "floralType": tipoFloral
+                    "weightKg": pesoKg || 250,
+                    "floralType": tipoFloral || 'Castaño'
                 }
             }
         };
 
         // 3. Subida del paquete de metadatos a IPFS
         const ipfsCID = await uploadToIPFS(dppMetadata);
+        const ipfsURI = `ipfs://${ipfsCID}`;
         console.log(`📦 Metadatos empaquetados e inmutabilizados en IPFS: ${ipfsCID}`);
 
-        // 4. Registro/Minting en el Smart Contract
-        const blockchainReceipt = await mintDPPOnBlockchain(loteId, ipfsCID, regaCode);
-        console.log(`⛓️ Pasaporte Digital de Producto minado en Blockchain (Token ID: ${blockchainReceipt.tokenId})`);
+        // Hashes de evidencia para privacidad en blockchain (bytes32)
+        const regaProofHash = crypto.createHash('sha256').update(regaCode).digest('hex');
+        const tracesProofHash = crypto.createHash('sha256').update(tracesCode || 'TRACES-MOCK').digest('hex');
 
-        // 5. Guardado en estado local (para posterior consulta del Resolver)
-        dppRegistryDB[loteId] = {
+        let blockchainReceipt;
+        let mode = 'blockchain';
+
+        // 4. Intento de registro real en Blockchain
+        try {
+            const txResult = await blockchainService.registrarYMinarLote({
+                loteId,
+                gtin,
+                cantidadTarros: totalTarros,
+                ipfsURI,
+                regaProofHash: `0x${regaProofHash}`,
+                tracesProofHash: `0x${tracesProofHash}`
+            });
+
+            blockchainReceipt = {
+                txHash: txResult.txHash,
+                blockNumber: txResult.blockNumber,
+                status: "PENDIENTE_CERTIFICACION",
+                mode: "on-chain"
+            };
+        } catch (chainErr) {
+            console.warn(`⚠️ No se pudo enviar la transacción a Blockchain (${chainErr.message}). Utilizando modo simulado local.`);
+            mode = 'simulated';
+            blockchainReceipt = {
+                txHash: "0x" + crypto.randomBytes(32).toString('hex'),
+                blockNumber: 1928301,
+                status: "PENDIENTE_CERTIFICACION",
+                mode: "simulated",
+                warning: chainErr.message
+            };
+        }
+
+        // 5. Guardado en fallback local
+        localFallbackDB[loteId] = {
+            gtin,
             metadata: dppMetadata,
-            ipfsCID: ipfsCID,
+            ipfsCID,
+            ipfsURI,
+            regaProofHash: `0x${regaProofHash}`,
+            tracesProofHash: `0x${tracesProofHash}`,
             blockchain: blockchainReceipt
         };
 
@@ -88,15 +111,16 @@ exports.registerFase1 = async (req, res) => {
             success: true,
             message: "Fase 1 completada: Registro de lote y generación de DPP iniciada.",
             loteId: loteId,
+            mode: mode,
             gs1DigitalLinkUrl: `http://localhost:3000/01/${gtin}/10/${loteId}`,
             dppStatus: blockchainReceipt.status,
             ipfs: {
                 cid: ipfsCID,
-                uri: `ipfs://${ipfsCID}`
+                uri: ipfsURI
             },
             blockchainProof: {
-                tokenId: blockchainReceipt.tokenId,
                 txHash: blockchainReceipt.txHash,
+                blockNumber: blockchainReceipt.blockNumber,
                 estado: blockchainReceipt.status
             }
         });
@@ -107,4 +131,4 @@ exports.registerFase1 = async (req, res) => {
     }
 };
 
-// app.listen(3000, () => console.log('🚀 Backend Fase 1 escuchando en http://localhost:3000'));
+exports.localFallbackDB = localFallbackDB;

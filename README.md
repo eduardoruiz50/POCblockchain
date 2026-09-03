@@ -35,13 +35,19 @@ POCblockchain/
 │       ├── config/index.js                  # Configuración centralizada de variables y RPC
 │       ├── controllers/
 │       │   ├── healthController.js          # Controlador de estado y monitoreo de la API
-│       │   └── fase1RegistroController.js   # Controlador para el registro en origen (Fase 1) y minado de DPP
+│       │   ├── dppController.js             # Controlador DPP (Resolver GS1, Fases 2, 3 y 4)
+│       │   ├── fase1RegistroController.js   # Controlador para el registro en origen (Fase 1) y minado ERC-1155
+│       │   ├── mockController.js            # Mocks SIEX y TRACES NT
+│       │   └── indexController.js           # Dashboard HTML y negociación de contenido
 │       ├── middlewares/
 │       │   └── errorHandler.js              # Middleware global para captura y manejo de errores
 │       ├── routes/
-│       │   └── healthRoutes.js             # Definición de rutas REST (/api/health)
+│       │   ├── healthRoutes.js              # Rutas de salud (/api/health)
+│       │   ├── dppRoutes.js                 # Rutas del ciclo de vida DPP y Resolver GS1
+│       │   ├── indexRoutes.js               # Ruta principal raíz (/)
+│       │   └── mockRoutes.js                # Rutas de simulación SIEX y TRACES
 │       ├── services/
-│       │   └── blockchainService.js        # Servicio base ethers.js para interactuar con la Web3
+│       │   └── blockchainService.js         # Interacción Web3 con el contrato MielBierzoDPP1155 (Ethers v6)
 │       └── server.js                        # Entrada principal (Express, GS1 Resolver, Content Negotiation)
 │
 └── blockchain/                              # Módulo Smart Contracts (Solidity + Hardhat)
@@ -114,8 +120,10 @@ POCblockchain/
 PORT=3000
 NODE_ENV=development
 RPC_URL=http://127.0.0.1:8545
-CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
-# PRIVATE_KEY=0x...
+CONTRACT_ADDRESS_1155=0x5FbDB2315678afecb367f032d93F642f64180aa3
+APICULTOR_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+CONSEJO_PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+DOMAIN=https://dpp-mieldelbierzo.onrender.com
 ```
 
 ### Módulo `blockchain/.env`
