@@ -8,6 +8,7 @@ function getDynamicEndpoints(expressApp) {
   const knownDescriptions = {
     'GET /': 'Mensaje de bienvenida con contexto del sistema y listado dinámico de endpoints.',
     'GET /api/health': 'Estado de salud del servidor, tiempo de actividad (uptime) y diagnóstico.',
+    'POST /api/dpp/fase1/registro': 'Registro en Origen (Fase 1) - Procesamiento de datos del lote, subida a IPFS y generación del DPP en Blockchain.',
     'GET /01/:gtin/10/:lote': 'Resolver de GS1 Digital Link - Consulta trazabilidad DPP y verificación inmutable en Blockchain.',
     'GET /api/v1/siex/explotacion/:id': 'Mock del Sistema de Información de Explotaciones Agrícolas en España (SIEX)',
     'GET /v1/operators/:id': 'Mock del Trade Control and Expert System New Technology (TRACES NT)'
@@ -33,13 +34,20 @@ function getDynamicEndpoints(expressApp) {
         });
       } else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
         let routePrefix = '';
-        if (layer.regexp && layer.regexp.source) {
-          const match = layer.regexp.source
+        
+        // Express sets fast_slash for root paths "/"
+        if (!layer.regexp.fast_slash && layer.regexp && layer.regexp.source) {
+          let match = layer.regexp.source
             .replace('^\\/', '')
             .replace('\\/?(?=\\/|$)', '')
             .replace('(?=\\/|$)', '')
             .replace(/\\\//g, '/');
-          if (match && match !== '^/' && match !== '/') {
+          
+          // Clean up any stray regex artifacts that might have survived
+          match = match.replace(/^\^|\/\?\(\?\=\\\/\|\$\)$/g, '');
+          match = match.replace(/\?\(\?\=\/\|\$\)/g, ''); // Removes ?(?=/|$)
+          
+          if (match && match !== '^/' && match !== '/' && match !== '?') {
             routePrefix = '/' + match;
           }
         }
