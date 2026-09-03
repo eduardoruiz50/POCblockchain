@@ -16,7 +16,7 @@ async function uploadToIPFS(metadataObject) {
 async function mintDPPOnBlockchain(loteId, ipfsCID, regaCode) {
     // Calcula hash de evidencia para privacidad en blockchain
     const regaHash = crypto.createHash('sha256').update(regaCode).digest('hex');
-    
+
     return {
         txHash: "0x" + crypto.randomBytes(32).toString('hex'),
         tokenId: Math.floor(1000 + Math.random() * 9000),
@@ -36,9 +36,9 @@ exports.registerFase1 = async (req, res) => {
 
         // 1. Validaciones básicas de entrada
         if (!loteId || !regaCode || !gtin) {
-            return res.status(400).json({ 
-                error: "Datos incompletos", 
-                detalle: "gtin, loteId y regaCode son obligatorios." 
+            return res.status(400).json({
+                error: "Datos incompletos",
+                detalle: "gtin, loteId y regaCode son obligatorios."
             });
         }
 
@@ -104,6 +104,6 @@ exports.registerFase1 = async (req, res) => {
         console.error("❌ Error en Fase 1:", error);
         return res.status(500).json({ error: "Error interno al registrar el lote." });
     }
-});
+};
 
 // app.listen(3000, () => console.log('🚀 Backend Fase 1 escuchando en http://localhost:3000'));
