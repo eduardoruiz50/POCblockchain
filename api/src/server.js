@@ -8,7 +8,6 @@ const healthRoutes = require('./routes/healthRoutes');
 const indexRoutes = require('./routes/indexRoutes');
 const dppRoutes = require('./routes/dppRoutes');
 const mockRoutes = require('./routes/mockRoutes');
-const fase1RegistroApp = require('./controllers/fase1_registro');
 
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -25,7 +24,6 @@ app.use('/api', healthRoutes);
 app.use('/', indexRoutes);
 app.use('/', dppRoutes);
 app.use('/', mockRoutes);
-app.use(fase1RegistroApp);
 
 // Manejador de errores
 app.use(errorHandler);

@@ -35,7 +35,7 @@ POCblockchain/
 │       ├── config/index.js                  # Configuración centralizada de variables y RPC
 │       ├── controllers/
 │       │   ├── healthController.js          # Controlador de estado y monitoreo de la API
-│       │   └── fase1_registro.js            # Controlador para el registro en origen (Fase 1) y minado de DPP
+│       │   └── fase1RegistroController.js   # Controlador para el registro en origen (Fase 1) y minado de DPP
 │       ├── middlewares/
 │       │   └── errorHandler.js              # Middleware global para captura y manejo de errores
 │       ├── routes/

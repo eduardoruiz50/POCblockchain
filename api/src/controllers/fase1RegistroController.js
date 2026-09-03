@@ -1,8 +1,4 @@
-const express = require('express');
 const crypto = require('crypto');
-const app = express();
-app.use(express.json());
-
 // ============================================================================
 // BASE DE DATOS LOCAL / MOCK BLOCKCHAIN (Para desarrollo local)
 // ============================================================================
@@ -34,7 +30,7 @@ async function mintDPPOnBlockchain(loteId, ipfsCID, regaCode) {
 // ============================================================================
 // ENDPOINT FASE 1: REGISTRO EN ORIGEN
 // ============================================================================
-app.post('/api/dpp/fase1/registro', async (req, res) => {
+exports.registerFase1 = async (req, res) => {
     try {
         const { gtin, loteId, regaCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg } = req.body;
 
@@ -110,5 +106,4 @@ app.post('/api/dpp/fase1/registro', async (req, res) => {
     }
 });
 
-module.exports = app;
 // app.listen(3000, () => console.log('🚀 Backend Fase 1 escuchando en http://localhost:3000'));
