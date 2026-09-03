@@ -32,7 +32,7 @@ async function mintDPPOnBlockchain(loteId, ipfsCID, regaCode) {
 // ============================================================================
 exports.registerFase1 = async (req, res) => {
     try {
-        const { gtin, loteId, regaCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg } = req.body;
+        const { gtin, loteId, regaCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg, cantidadTarros } = req.body;
 
         // 1. Validaciones básicas de entrada
         if (!loteId || !regaCode || !gtin) {
@@ -51,6 +51,7 @@ exports.registerFase1 = async (req, res) => {
             "issuanceDate": new Date().toISOString(),
             "credentialSubject": {
                 "gtin": gtin,
+                "cantidadTarros": cantidadTarros, // Ej: 500 tarros
                 "batchNumber": loteId,
                 "productName": `Miel de ${tipoFloral} del Bierzo`,
                 "origin": {

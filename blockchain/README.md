@@ -7,16 +7,21 @@ Módulo de contratos inteligentes para el proyecto POCblockchain utilizando **So
 ```text
 blockchain/
 ├── contracts/              # Contratos inteligentes en Solidity (.sol)
-│   └── SampleContract.sol
+│   └── MielBierzoDPP1155.sol # Contrato ERC-1155 del Pasaporte Digital (DPP)
 ├── scripts/                # Scripts de automatización y despliegue
 │   └── deploy.js
 ├── test/                   # Pruebas unitarias con Chai y Mocha
-│   └── SampleContract.test.js
+│   └── MielBierzoDPP1155.test.js
 ├── hardhat.config.js       # Configuración de compilador, redes y optimizaciones
 ├── .env.example
 ├── package.json
 └── README.md
 ```
+
+## Notas Técnicas
+
+- **Solidity Version:** `0.8.24`
+- **EVM Target:** `cancun`. Este requerimiento se debe al uso de la función `mcopy` (introducida en el hard fork de Cancun) utilizada en las últimas versiones de `@openzeppelin/contracts` (v5.6+).
 
 ## Instalación y Comandos
 

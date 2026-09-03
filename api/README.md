@@ -1,6 +1,6 @@
 # API POCblockchain (Express.js & GS1 Digital Link)
 
-Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, implementa la resolución del estándar **GS1 Digital Link** para Pasaportes Digitales de Producto (DPP) e interactúa con contratos inteligentes en la red Blockchain utilizando `ethers.js (v6)`.
+Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, implementa la resolución del estándar **GS1 Digital Link** para Pasaportes Digitales de Producto (DPP) e interactúa con el contrato inteligente `MielBierzoDPP1155` en la red Blockchain utilizando `ethers.js (v6)`.
 
 ---
 
