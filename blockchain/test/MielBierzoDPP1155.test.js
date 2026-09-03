@@ -1,9 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("MielBierzoDPP1155 Smart Contract", function () {
+describe("MielBierzoDPP1155 Smart Contract (Relayer & Oráculo Architecture)", function () {
   let contract;
   let admin;
+  let relayer;
   let consejoRegulador;
   let apicultor;
   let tienda;
@@ -18,33 +19,33 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
   const certHash = ethers.id("CERT-DOP-LAB-9921");
 
   beforeEach(async function () {
-    [admin, consejoRegulador, apicultor, tienda, otroUsuario] = await ethers.getSigners();
+    [admin, relayer, consejoRegulador, apicultor, tienda, otroUsuario] = await ethers.getSigners();
 
     const ContractFactory = await ethers.getContractFactory("MielBierzoDPP1155");
-    contract = await ContractFactory.deploy(admin.address, consejoRegulador.address);
+    contract = await ContractFactory.deploy(admin.address, relayer.address, consejoRegulador.address);
     await contract.waitForDeployment();
-
-    // Asignar rol APICULTOR_ROLE
-    const APICULTOR_ROLE = await contract.APICULTOR_ROLE();
-    await contract.connect(admin).grantRole(APICULTOR_ROLE, apicultor.address);
   });
 
   describe("Despliegue y Roles", function () {
-    it("Debería asignar roles iniciales a admin y consejo regulador", async function () {
+    it("Debería asignar roles de RELAYER y APICULTOR al Relayer", async function () {
       const DEFAULT_ADMIN_ROLE = await contract.DEFAULT_ADMIN_ROLE();
-      const CONSEJO_ROLE = await contract.CONSEJO_REGULADOR_ROLE();
+      const RELAYER_ROLE = await contract.RELAYER_ROLE();
       const APICULTOR_ROLE = await contract.APICULTOR_ROLE();
+      const CONSEJO_ROLE = await contract.CONSEJO_REGULADOR_ROLE();
+      const ORACULO_ROLE = await contract.ORACULO_ROLE();
 
       expect(await contract.hasRole(DEFAULT_ADMIN_ROLE, admin.address)).to.be.true;
+      expect(await contract.hasRole(RELAYER_ROLE, relayer.address)).to.be.true;
+      expect(await contract.hasRole(APICULTOR_ROLE, relayer.address)).to.be.true;
       expect(await contract.hasRole(CONSEJO_ROLE, consejoRegulador.address)).to.be.true;
-      expect(await contract.hasRole(APICULTOR_ROLE, apicultor.address)).to.be.true;
+      expect(await contract.hasRole(ORACULO_ROLE, relayer.address)).to.be.true;
     });
   });
 
-  describe("Fase 1: Registro y Minado Masivo (Apicultor)", function () {
-    it("Debería permitir al apicultor minar el lote y acuñar los tokens ERC-1155", async function () {
+  describe("Fase 1: Registro y Minado Masivo (Relayer)", function () {
+    it("El Relayer debería minar el lote y asignar los tokens ERC-1155 a la wallet del Apicultor", async function () {
       await expect(
-        contract.connect(apicultor).mintDPPBatch(
+        contract.connect(relayer).mintDPPBatch(
           apicultor.address,
           loteId,
           gtin,
@@ -53,7 +54,8 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
           regaHash,
           tracesHash
         )
-      ).to.emit(contract, "BatchMinted");
+      ).to.emit(contract, "BatchMinted")
+        .withArgs(1n, loteId, gtin, cantidadTarros, apicultor.address);
 
       const loteData = await contract.getLoteByLoteId(loteId);
       expect(loteData.tokenId).to.equal(1n);
@@ -61,15 +63,15 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
       expect(loteData.cantidadTarros).to.equal(BigInt(cantidadTarros));
       expect(Number(loteData.estado)).to.equal(0); // PENDIENTE_CERTIFICACION
 
-      // Verificar balance ERC-1155 del apicultor
+      // Verificar que el apicultor recibió los tokens físicos tokenizados
       const balance = await contract.balanceOf(apicultor.address, 1);
       expect(balance).to.equal(BigInt(cantidadTarros));
     });
 
-    it("Debería rechazar el minado si no tiene el rol de apicultor", async function () {
+    it("Debería rechazar el minado si no tiene el rol de Relayer o Apicultor", async function () {
       await expect(
         contract.connect(otroUsuario).mintDPPBatch(
-          otroUsuario.address,
+          apicultor.address,
           loteId,
           gtin,
           cantidadTarros,
@@ -77,13 +79,13 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
           regaHash,
           tracesHash
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("Error: Requiere rol RELAYER_ROLE o APICULTOR_ROLE");
     });
   });
 
-  describe("Fase 2: Certificación D.O.P. (Consejo Regulador)", function () {
+  describe("Fase 2: Certificación D.O.P. (Oráculo / Consejo Regulador)", function () {
     beforeEach(async function () {
-      await contract.connect(apicultor).mintDPPBatch(
+      await contract.connect(relayer).mintDPPBatch(
         apicultor.address,
         loteId,
         gtin,
@@ -94,9 +96,9 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
       );
     });
 
-    it("Debería permitir al Consejo Regulador certificar un lote", async function () {
+    it("Debería permitir certificar vía Oráculo / Relayer", async function () {
       await expect(
-        contract.connect(consejoRegulador).certifyLot(loteId, certHash, true)
+        contract.connect(relayer).certifyLot(loteId, certHash, true)
       ).to.emit(contract, "BatchCertified");
 
       const loteData = await contract.getLoteByLoteId(loteId);
@@ -104,16 +106,25 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
       expect(loteData.dopCertHash).to.equal(certHash);
     });
 
-    it("Debería rechazar si otro usuario intenta certificar", async function () {
+    it("Debería permitir certificar directamente al Consejo Regulador", async function () {
       await expect(
-        contract.connect(apicultor).certifyLot(loteId, certHash, true)
-      ).to.be.reverted;
+        contract.connect(consejoRegulador).certifyLot(loteId, certHash, true)
+      ).to.emit(contract, "BatchCertified");
+
+      const loteData = await contract.getLoteByLoteId(loteId);
+      expect(Number(loteData.estado)).to.equal(1);
+    });
+
+    it("Debería rechazar si un usuario no autorizado intenta certificar", async function () {
+      await expect(
+        contract.connect(otroUsuario).certifyLot(loteId, certHash, true)
+      ).to.be.revertedWith("Error: No autorizado para certificar lote");
     });
   });
 
   describe("Fase 3: Transferencia ERC-1155 a Comercio", function () {
     beforeEach(async function () {
-      await contract.connect(apicultor).mintDPPBatch(
+      await contract.connect(relayer).mintDPPBatch(
         apicultor.address,
         loteId,
         gtin,
@@ -124,9 +135,14 @@ describe("MielBierzoDPP1155 Smart Contract", function () {
       );
     });
 
-    it("Debería transferir tarros del apicultor a la tienda", async function () {
-      const cantidadATransferir = 50;
-      await contract.connect(apicultor).safeTransferFrom(
+    it("Debería transferir tarros del apicultor a la tienda con aprobación previa", async function () {
+      const cantidadATransferir = 75;
+
+      // El apicultor autoriza al relayer como operador
+      await contract.connect(apicultor).setApprovalForAll(relayer.address, true);
+
+      // El Relayer ejecuta la transferencia
+      await contract.connect(relayer).safeTransferFrom(
         apicultor.address,
         tienda.address,
         1,

@@ -216,7 +216,7 @@ exports.getDpp = async (req, res) => {
 };
 
 // ============================================================================
-// FASE 2: CERTIFICACIÓN D.O.P. (Consejo Regulador)
+// FASE 2: CERTIFICACIÓN D.O.P. (Impulsada por Oráculo / Relayer)
 // ============================================================================
 exports.certifyFase2 = async (req, res) => {
   try {
@@ -229,47 +229,49 @@ exports.certifyFase2 = async (req, res) => {
     const resultadoAprobado = aprobado !== undefined ? Boolean(aprobado) : true;
     const certHash = dopCertHash || "CERT-LAB-DOP-" + Date.now();
 
-    const txResult = await blockchainService.certificarLoteDOP(loteId, certHash, resultadoAprobado);
+    const txResult = await blockchainService.certificarLoteViaOraculoDOP(loteId, certHash, resultadoAprobado);
 
     return res.json({
       success: true,
-      message: `Fase 2 completada: Lote ${loteId} certificado por el Consejo Regulador.`,
+      message: `Fase 2 completada: Lote ${loteId} certificado mediante Oráculo DOP y Relayer.`,
       loteId,
       txHash: txResult.txHash,
       blockNumber: txResult.blockNumber,
       aprobado: resultadoAprobado
     });
   } catch (error) {
-    console.error("❌ Error en Fase 2:", error);
-    return res.status(500).json({ error: "Error al certificar lote en blockchain.", detalle: error.message });
+    console.error("❌ Error en Fase 2 (Oráculo):", error);
+    return res.status(500).json({ error: "Error al registrar certificación del Oráculo.", detalle: error.message });
   }
 };
 
 // ============================================================================
-// FASE 3: TRANSFERENCIA A COMERCIO LOCAL (ERC-1155 safeTransferFrom)
+// FASE 3: TRANSFERENCIA A COMERCIO LOCAL (Relayer safeTransferFrom)
 // ============================================================================
 exports.transferirFase3 = async (req, res) => {
   try {
-    const { tiendaAddress, tokenId, cantidad } = req.body;
+    const { fromAddress, tiendaAddress, toAddress, tokenId, cantidad } = req.body;
+    const destino = tiendaAddress || toAddress;
 
-    if (!tiendaAddress || tokenId === undefined || !cantidad) {
-      return res.status(400).json({ error: "Datos incompletos", detalle: "tiendaAddress, tokenId y cantidad son obligatorios." });
+    if (!destino || tokenId === undefined || !cantidad) {
+      return res.status(400).json({ error: "Datos incompletos", detalle: "tiendaAddress (o toAddress), tokenId y cantidad son obligatorios." });
     }
 
     const txResult = await blockchainService.transferirTarrosAComercio(
-      tiendaAddress,
+      fromAddress,
+      destino,
       Number(tokenId),
       Number(cantidad)
     );
 
     return res.json({
       success: true,
-      message: `Fase 3 completada: ${cantidad} tarros del Token #${tokenId} transferidos a ${tiendaAddress}.`,
+      message: `Fase 3 completada: ${cantidad} tarros del Token #${tokenId} transferidos a ${destino} vía Relayer.`,
       txHash: txResult.txHash
     });
   } catch (error) {
-    console.error("❌ Error en Fase 3:", error);
-    return res.status(500).json({ error: "Error al transferir tarros en blockchain.", detalle: error.message });
+    console.error("❌ Error en Fase 3 (Relayer):", error);
+    return res.status(500).json({ error: "Error al transferir tarros vía Relayer.", detalle: error.message });
   }
 };
 

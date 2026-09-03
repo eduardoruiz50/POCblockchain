@@ -8,15 +8,18 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 /**
  * @title MielBierzoDPP1155
  * @notice Implementación del Pasaporte Digital de Producto (DPP) para la D.O.P. Miel del Bierzo.
- * Diseñado para pequeños productores bajo el estándar ERC-1155 (Multi-Token).
- * Permite tokenizar la cantidad exacta de tarros físicos ($N$) producidos en cada lote.
+ * Arquitectura basada en Relayer / Operador Web3 y Oráculo:
+ * - El Relayer (RELAYER_ROLE) orquesta y costea el gas de transacciones de minado y transferencias autorizadas.
+ * - El Oráculo / Consejo Regulador (ORACULO_ROLE / CONSEJO_REGULADOR_ROLE) certifica lotes según dictamen de laboratorio.
  */
 contract MielBierzoDPP1155 is ERC1155, AccessControl {
     using Strings for uint256;
 
     // Roles del sistema
+    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     bytes32 public constant APICULTOR_ROLE = keccak256("APICULTOR_ROLE");
     bytes32 public constant CONSEJO_REGULADOR_ROLE = keccak256("CONSEJO_REGULADOR_ROLE");
+    bytes32 public constant ORACULO_ROLE = keccak256("ORACULO_ROLE");
 
     // Estados de certificación del lote
     enum EstadoDPP { PENDIENTE_CERTIFICACION, CERTIFICADO_DOP_BIERZO, RECHAZADO }
@@ -59,25 +62,27 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
     );
 
     /**
-     * @dev Configura el Administrador y asigna el rol del Consejo Regulador.
+     * @dev Configura el Administrador, el Relayer y el Consejo Regulador / Oráculo.
      * @param admin Dirección wallet encargada de la administración del contrato.
-     * @param consejoRegulador Dirección wallet autorizada para auditar y certificar lotes DOP.
+     * @param relayer Dirección del Relayer que procesa y patrocina las transacciones.
+     * @param consejoRegulador Dirección autorizada para auditar y certificar lotes DOP.
      */
-    constructor(address admin, address consejoRegulador) ERC1155("") {
+    constructor(address admin, address relayer, address consejoRegulador) ERC1155("") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        
+        // Roles para el Relayer de la plataforma
+        _grantRole(RELAYER_ROLE, relayer);
+        _grantRole(APICULTOR_ROLE, relayer);
+
+        // Roles para la certificación D.O.P.
         _grantRole(CONSEJO_REGULADOR_ROLE, consejoRegulador);
+        _grantRole(ORACULO_ROLE, consejoRegulador);
+        _grantRole(ORACULO_ROLE, relayer); // Permite al relayer registrar veredictos validados por oráculo backend
     }
 
     /**
-     * @notice Fase 1: Registro y Minado Masivo del Lote de Miel por el Apicultor.
-     * @dev Genera un nuevo Token ID ERC-1155 con $N$ unidades equivalentes al número de tarros producidos.
-     * @param apicultor Dirección que recibirá los tokens de los tarros físicamente producidos.
-     * @param loteId Código identificador del lote de producción.
-     * @param gtin Identificador de producto de la norma GS1.
-     * @param cantidadTarros Número de tarros producidos y empaquetados en este lote.
-     * @param ipfsURI Enlace descentralizado IPFS que apunta al archivo JSON-LD.
-     * @param regaProofHash Hash criptográfico del libro de explotación apícola.
-     * @param tracesProofHash Hash criptográfico de la autorización de traslado sanitario.
+     * @notice Fase 1: Registro y Minado Masivo del Lote (Ejecutado por el Relayer o Apicultor).
+     * @dev Genera un nuevo Token ID ERC-1155 con N unidades y las asigna a la wallet del apicultor.
      */
     function mintDPPBatch(
         address apicultor,
@@ -87,7 +92,11 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
         string calldata ipfsURI,
         bytes32 regaProofHash,
         bytes32 tracesProofHash
-    ) external onlyRole(APICULTOR_ROLE) returns (uint256) {
+    ) external returns (uint256) {
+        require(
+            hasRole(RELAYER_ROLE, msg.sender) || hasRole(APICULTOR_ROLE, msg.sender),
+            "Error: Requiere rol RELAYER_ROLE o APICULTOR_ROLE"
+        );
         require(loteToTokenId[loteId] == 0, "Error: El LoteID ya ha sido registrado previamente");
         require(cantidadTarros > 0, "Error: La cantidad de tarros debe ser mayor que cero");
 
@@ -118,8 +127,7 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
     }
 
     /**
-     * @notice Fase 2: Certificación DOP por parte del Consejo Regulador.
-     * @dev Solo la wallet con CONSEJO_REGULADOR_ROLE puede dictaminar si el lote cumple la DOP Bierzo.
+     * @notice Fase 2: Certificación DOP por Oráculo / Consejo Regulador / Relayer autorizado.
      * @param loteId Identificador del lote a examinar.
      * @param dopCertHash Hash del informe oficial de análisis de laboratorio.
      * @param aprobado True para aprobar la D.O.P., False para denegarla.
@@ -128,7 +136,14 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
         string calldata loteId,
         bytes32 dopCertHash,
         bool aprobado
-    ) external onlyRole(CONSEJO_REGULADOR_ROLE) {
+    ) external {
+        require(
+            hasRole(CONSEJO_REGULADOR_ROLE, msg.sender) || 
+            hasRole(ORACULO_ROLE, msg.sender) || 
+            hasRole(RELAYER_ROLE, msg.sender),
+            "Error: No autorizado para certificar lote"
+        );
+
         uint256 tokenId = loteToTokenId[loteId];
         require(tokenId != 0, "Error: El lote especificado no existe");
         require(lotes[tokenId].estado == EstadoDPP.PENDIENTE_CERTIFICACION, "Error: El lote ya fue procesado");
@@ -141,6 +156,21 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
         }
 
         emit BatchCertified(tokenId, loteId, dopCertHash, lotes[tokenId].estado);
+    }
+
+    /**
+     * @notice Fase 3 (Delegada): Transferencia gestionada por el Relayer.
+     * @dev Permite al Relayer mover tokens si el propietario lo aprobó previamente, o si es el Relayer quien opera la custodia.
+     */
+    function relayerTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external onlyRole(RELAYER_ROLE) {
+        // Ejecuta safeTransferFrom validando el estándar ERC-1155
+        _safeTransferFrom(from, to, id, value, data);
     }
 
     /**

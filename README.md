@@ -85,15 +85,18 @@ POCblockchain/
 ### 1. Smart Contracts (`/blockchain`)
 - **`MielBierzoDPP1155.sol`**:
   - **Roles y Permisos:**
-    - `APICULTOR_ROLE`: Permite el registro y minado de lotes.
-    - `CONSEJO_REGULADOR_ROLE`: Permite la auditoría y certificación (D.O.P.).
+    - `RELAYER_ROLE`: Permite al operador de la plataforma firmar y patrocinar transacciones Web3 de minado y transferencias.
+    - `APICULTOR_ROLE`: Permite el registro y minado directo de lotes.
+    - `CONSEJO_REGULADOR_ROLE`: Permite la auditoría y certificación presencial (D.O.P.).
+    - `ORACULO_ROLE`: Permite a oráculos automatizados de datos/laboratorio inscribir dictámenes de calidad oficiales.
   - **Estado:**
     - `struct LoteDPP`: Datos inmutables del lote (GTIN, hashes SIEX/TRACES, análisis DOP, URI IPFS).
     - `mapping(uint256 => LoteDPP) lotes`: Registro de metadatos por Token ID.
     - `mapping(string => uint256) loteToTokenId`: Búsqueda de Token ID a partir de la clave del lote.
   - **Funciones Principales:**
-    - `mintDPPBatch(...)`: Fase 1. El apicultor registra el lote, acuña $N$ tokens ERC-1155 y asigna hashes de pruebas documentales.
-    - `certifyLot(...)`: Fase 2. El Consejo Regulador audita el lote y emite el hash del análisis fisicoquímico/polínico.
+    - `mintDPPBatch(...)`: Fase 1. Registro de lote y acuñación de $N$ tokens ERC-1155 asignados al apicultor (patrocinado por Relayer).
+    - `certifyLot(...)`: Fase 2. El Consejo Regulador u Oráculo inscribe el hash del análisis fisicoquímico/polínico.
+    - `relayerTransferFrom(...)`: Fase 3. Movimiento de tarros ERC-1155 gestionado por el Relayer hacia comercios locales.
     - `getLoteByLoteId(...)`: Consulta estructurada de datos por identificador alfanumérico.
     - `uri(...)`: Consulta de metadatos (JSON-LD) apuntando a IPFS.
   - **Eventos:**
@@ -120,9 +123,8 @@ POCblockchain/
 PORT=3000
 NODE_ENV=development
 RPC_URL=http://127.0.0.1:8545
-CONTRACT_ADDRESS_1155=0x5FbDB2315678afecb367f032d93F642f64180aa3
-APICULTOR_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-CONSEJO_PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+CONTRACT_ADDRESS_1155=0x0000000000000000000000000000000000000000
+RELAYER_PRIVATE_KEY=YOUR_RELAYER_PRIVATE_KEY
 DOMAIN=https://dpp-mieldelbierzo.onrender.com
 ```
 

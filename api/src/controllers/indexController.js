@@ -8,8 +8,8 @@ function getDynamicEndpoints(expressApp) {
   const knownDescriptions = {
     'GET /': 'Mensaje de bienvenida con contexto del sistema y listado dinámico de endpoints.',
     'GET /api/health': 'Estado de salud del servidor, tiempo de actividad (uptime) y diagnóstico.',
-    'POST /api/dpp/fase1/registro': 'Registro en Origen (Fase 1) - Procesamiento del lote, subida a IPFS y minado de tokens ERC-1155.',
-    'POST /api/dpp/fase2/certificar': 'Certificación D.O.P. (Fase 2) - Emisión de dictamen y hash del laboratorio por el Consejo Regulador.',
+    'POST /api/dpp/fase1/registro': 'Registro en Origen (Fase 1) - Consulta automática a Oráculos SIEX y TRACES NT, subida a IPFS y minado ERC-1155 vía Relayer.',
+    'POST /api/dpp/fase2/certificar': 'Certificación D.O.P. (Fase 2) - Emisión de dictamen y hash del laboratorio por el Oráculo del Consejo Regulador.',
     'POST /api/dpp/fase3/transferir': 'Transferencia a Tienda (Fase 3) - Movimiento de tarros ERC-1155 desde el apicultor al comercio local.',
     'GET /api/dpp/lote/:loteId': 'Consulta On-Chain (Fase 4) - Verificación directa de estado, metadatos y stock actual sin consumo de gas.',
     'GET /01/:gtin/10/:lote': 'Resolver de GS1 Digital Link - Consulta trazabilidad DPP y verificación inmutable en Blockchain.',

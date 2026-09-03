@@ -1,6 +1,6 @@
 # API POCblockchain (Express.js & GS1 Digital Link)
 
-Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, implementa la resolución del estándar **GS1 Digital Link** para Pasaportes Digitales de Producto (DPP) e interactúa con el contrato inteligente `MielBierzoDPP1155` (ERC-1155 Multi-Token) en la red Blockchain utilizando `ethers.js (v6)`.
+Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, implementa la resolución del estándar **GS1 Digital Link** para Pasaportes Digitales de Producto (DPP) e interactúa con el contrato inteligente `MielBierzoDPP1155` (ERC-1155 Multi-Token) mediante una arquitectura de **Relayer Web3** y **Oráculo D.O.P.** utilizando `ethers.js (v6)`.
 
 ---
 
@@ -8,6 +8,13 @@ Módulo backend para la Prueba de Concepto (POC) que expone endpoints REST, impl
 
 - **Producción (Render):** [https://dpp-mieldelbierzo.onrender.com](https://dpp-mieldelbierzo.onrender.com)
 - **Desarrollo Local:** `http://localhost:3000`
+
+---
+
+## ⚡ Arquitectura Relayer & Oráculo
+
+- **Relayer Centralizado (`RELAYER_ROLE`):** La API asume el rol de operador transaccional. Firma y patrocina el gas de las transacciones de minado y transferencias en nombre de los productores, abstrayendo la complejidad de las claves privadas a los usuarios.
+- **Oráculo D.O.P. (`ORACULO_ROLE`):** Permite registrar inmutablemente en blockchain los informes de laboratorio y dictámenes de calidad oficiales emitidos por el Consejo Regulador.
 
 ---
 
@@ -22,9 +29,9 @@ api/
 │   ├── controllers/        # Controladores (dppController, fase1Registro, health, etc.)
 │   ├── middlewares/        # Middlewares de Express (CORS, Morgan, ErrorHandler)
 │   ├── routes/             # Definición de rutas (/api/dpp, /01/:gtin/10/:lote, /api/health)
-│   ├── services/           # Lógica Web3 de conexión con Smart Contract ERC-1155
+│   ├── services/           # Lógica Web3 con Relayer y Oráculo sobre Smart Contract ERC-1155
 │   └── server.js           # Inicialización del servidor y registro de rutas/middlewares
-├── .env.example            # Variables para contratos, RPC y llaves de roles
+├── .env.example            # Plantilla para contrato, RPC y RELAYER_PRIVATE_KEY
 ├── package.json
 └── README.md
 ```
@@ -68,9 +75,9 @@ api/
 - `GET /01/:gtin/10/:lote`: **GS1 Digital Link Resolver** - Consulta y verificación inmutable del Pasaporte Digital de Producto (DPP) en la Blockchain de la DOP Miel del Bierzo (soporta HTML interactivo para el consumidor y JSON/JSON-LD estructurado).
 
 ### 🍯 Ciclo de Vida del DPP (Fases 1 a 4)
-- `POST /api/dpp/fase1/registro`: **Fase 1 (Apicultor)** - Registro en origen, empaquetado y subida de metadatos a IPFS, y minado en Smart Contract (`mintDPPBatch`).
-- `POST /api/dpp/fase2/certificar`: **Fase 2 (Consejo Regulador)** - Emisión de dictamen oficial de la D.O.P. y registro inmutable del hash de laboratorio (`certifyLot`).
-- `POST /api/dpp/fase3/transferir`: **Fase 3 (Comercio Local)** - Transferencia y trazabilidad de tarros físicos acuñados vía tokens ERC-1155 (`safeTransferFrom`).
+- `POST /api/dpp/fase1/registro`: **Fase 1 (Minado con Oráculos SIEX y TRACES)** - Consulta automática a los servicios de explotación agraria (SIEX) y trazabilidad sanitaria (TRACES NT) para generar sus hashes Keccak-256, empaquetar metadatos en IPFS y minar tokens ERC-1155 vía Relayer (`registrarYMinarLoteCompleto`).
+- `POST /api/dpp/fase2/certificar`: **Fase 2 (Oráculo D.O.P.)** - Registro del dictamen de laboratorio en el Smart Contract mediante el oráculo/relayer (`certificarLoteViaOraculoDOP`).
+- `POST /api/dpp/fase3/transferir`: **Fase 3 (Transferencia Comercial)** - Movimiento de tarros ERC-1155 desde el productor hacia el comercio local (`transferirTarrosAComercio`).
 - `GET /api/dpp/lote/:loteId`: **Fase 4 (Consulta On-Chain)** - Lectura directa de estado, metadatos, evidencias criptográficas y stock actual sin consumo de gas.
 
 ### 🏛️ Mocks de Servicios Oficiales

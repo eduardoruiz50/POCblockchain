@@ -16,15 +16,18 @@ const localFallbackDB = {};
 // ============================================================================
 exports.registerFase1 = async (req, res) => {
     try {
-        const { gtin, loteId, regaCode, tracesCode, nombreColmenar, latitud, longitud, tipoFloral, pesoKg, cantidadTarros } = req.body;
+        const { apicultorAddress, gtin, loteId, regaCode, tracesCode, explotacionIdSIEX, operatorIdTRACES, nombreColmenar, latitud, longitud, tipoFloral, pesoKg, cantidadTarros } = req.body;
 
         // 1. Validaciones básicas de entrada
-        if (!loteId || !regaCode || !gtin) {
+        if (!loteId || (!regaCode && !explotacionIdSIEX) || !gtin) {
             return res.status(400).json({
                 error: "Datos incompletos",
-                detalle: "gtin, loteId y regaCode son obligatorios."
+                detalle: "gtin, loteId y regaCode (o explotacionIdSIEX) son obligatorios."
             });
         }
+
+        const siexId = explotacionIdSIEX || (regaCode.startsWith('ES000000') ? regaCode : 'ES00000012345');
+        const tracesId = operatorIdTRACES || tracesCode || 'ES-BIO-001-TEST';
 
         const totalTarros = Number(cantidadTarros) || 1;
         console.log(`\n🍯 [FASE 1] Registrando cosecha para el Lote: ${loteId}...`);
@@ -40,8 +43,8 @@ exports.registerFase1 = async (req, res) => {
                 "batchNumber": loteId,
                 "productName": `Miel de ${tipoFloral || 'Castaño'} del Bierzo`,
                 "origin": {
-                    "regaCode": regaCode,
-                    "tracesCode": tracesCode || 'ES-BIO-001-TEST',
+                    "regaCode": regaCode || siexId,
+                    "tracesCode": tracesId,
                     "locationName": nombreColmenar || 'Colmenar El Bierzo',
                     "coordinates": { latitude: latitud || 42.55, longitude: longitud || -6.59 },
                     "comarca": "El Bierzo"
@@ -59,22 +62,20 @@ exports.registerFase1 = async (req, res) => {
         const ipfsURI = `ipfs://${ipfsCID}`;
         console.log(`📦 Metadatos empaquetados e inmutabilizados en IPFS: ${ipfsCID}`);
 
-        // Hashes de evidencia para privacidad en blockchain (bytes32)
-        const regaProofHash = crypto.createHash('sha256').update(regaCode).digest('hex');
-        const tracesProofHash = crypto.createHash('sha256').update(tracesCode || 'TRACES-MOCK').digest('hex');
-
         let blockchainReceipt;
         let mode = 'blockchain';
+        let hashesOraculos = {};
 
-        // 4. Intento de registro real en Blockchain
+        // 4. Intento de registro real en Blockchain (vía Relayer y Oráculos SIEX/TRACES)
         try {
-            const txResult = await blockchainService.registrarYMinarLote({
+            const txResult = await blockchainService.registrarYMinarLoteCompleto({
+                apicultorAddress,
                 loteId,
                 gtin,
                 cantidadTarros: totalTarros,
                 ipfsURI,
-                regaProofHash: `0x${regaProofHash}`,
-                tracesProofHash: `0x${tracesProofHash}`
+                explotacionIdSIEX: siexId,
+                operatorIdTRACES: tracesId
             });
 
             blockchainReceipt = {
@@ -83,9 +84,13 @@ exports.registerFase1 = async (req, res) => {
                 status: "PENDIENTE_CERTIFICACION",
                 mode: "on-chain"
             };
+            hashesOraculos = txResult.hashesOraculos || {};
         } catch (chainErr) {
             console.warn(`⚠️ No se pudo enviar la transacción a Blockchain (${chainErr.message}). Utilizando modo simulado local.`);
             mode = 'simulated';
+            const fallbackRega = crypto.createHash('sha256').update(siexId).digest('hex');
+            const fallbackTraces = crypto.createHash('sha256').update(tracesId).digest('hex');
+            hashesOraculos = { regaProofHash: `0x${fallbackRega}`, tracesProofHash: `0x${fallbackTraces}` };
             blockchainReceipt = {
                 txHash: "0x" + crypto.randomBytes(32).toString('hex'),
                 blockNumber: 1928301,
@@ -101,19 +106,20 @@ exports.registerFase1 = async (req, res) => {
             metadata: dppMetadata,
             ipfsCID,
             ipfsURI,
-            regaProofHash: `0x${regaProofHash}`,
-            tracesProofHash: `0x${tracesProofHash}`,
+            regaProofHash: hashesOraculos.regaProofHash,
+            tracesProofHash: hashesOraculos.tracesProofHash,
             blockchain: blockchainReceipt
         };
 
         // 6. Respuesta al cliente / Apicultor
         return res.status(201).json({
             success: true,
-            message: "Fase 1 completada: Registro de lote y generación de DPP iniciada.",
+            message: "Fase 1 completada: Registro de lote y generación de DPP iniciada con Oráculos.",
             loteId: loteId,
             mode: mode,
             gs1DigitalLinkUrl: `http://localhost:3000/01/${gtin}/10/${loteId}`,
             dppStatus: blockchainReceipt.status,
+            hashesOraculos: hashesOraculos,
             ipfs: {
                 cid: ipfsCID,
                 uri: ipfsURI
