@@ -50,11 +50,11 @@ POCblockchain/
     ├── hardhat.config.js                    # Configuración de compilador, redes (localhost, Sepolia)
     ├── README.md                            # Documentación específica del módulo Blockchain
     ├── contracts/
-    │   └── SampleContract.sol               # Contrato inteligente en Solidity (^0.8.24)
+    │   └── MielBierzoDPP1155.sol            # Contrato ERC-1155 del Pasaporte Digital (DPP)
     ├── scripts/
     │   └── deploy.js                        # Script automatizado de despliegue
     └── test/
-        └── SampleContract.test.js           # Suite de pruebas unitarias con Mocha y Chai
+        └── MielBierzoDPP1155.test.js        # Suite de pruebas unitarias con Mocha y Chai
 ```
 
 ---
@@ -77,20 +77,22 @@ POCblockchain/
 ## 📄 Detalle de Componentes
 
 ### 1. Smart Contracts (`/blockchain`)
-- **`SampleContract.sol`**:
+- **`MielBierzoDPP1155.sol`**:
+  - **Roles y Permisos:**
+    - `APICULTOR_ROLE`: Permite el registro y minado de lotes.
+    - `CONSEJO_REGULADOR_ROLE`: Permite la auditoría y certificación (D.O.P.).
   - **Estado:**
-    - `address public owner`: Dirección del propietario/creador del contrato.
-    - `string private message`: Mensaje almacenado en el estado del contrato.
-    - `uint256 public counter`: Contador numérico.
-  - **Funciones:**
-    - `constructor(string initialMessage)`: Inicializa el propietario y el mensaje inicial.
-    - `setMessage(string newMessage)`: Actualiza el mensaje emitido por el evento `MessageUpdated`.
-    - `getMessage()`: Consulta el mensaje actual (view).
-    - `incrementCounter()`: Incrementa el contador en 1 y emite `CounterIncremented`.
-    - `resetCounter()`: Reinicia el contador a 0 (restringido únicamente al `owner` mediante modifier `onlyOwner`).
+    - `struct LoteDPP`: Datos inmutables del lote (GTIN, hashes SIEX/TRACES, análisis DOP, URI IPFS).
+    - `mapping(uint256 => LoteDPP) lotes`: Registro de metadatos por Token ID.
+    - `mapping(string => uint256) loteToTokenId`: Búsqueda de Token ID a partir de la clave del lote.
+  - **Funciones Principales:**
+    - `mintDPPBatch(...)`: Fase 1. El apicultor registra el lote, acuña $N$ tokens ERC-1155 y asigna hashes de pruebas documentales.
+    - `certifyLot(...)`: Fase 2. El Consejo Regulador audita el lote y emite el hash del análisis fisicoquímico/polínico.
+    - `getLoteByLoteId(...)`: Consulta estructurada de datos por identificador alfanumérico.
+    - `uri(...)`: Consulta de metadatos (JSON-LD) apuntando a IPFS.
   - **Eventos:**
-    - `MessageUpdated(address indexed updater, string newMessage)`
-    - `CounterIncremented(address indexed updater, uint256 newCounter)`
+    - `BatchMinted`
+    - `BatchCertified`
 
 ### 2. API REST & Herramientas (`/api`)
 - **`server.js`**:
