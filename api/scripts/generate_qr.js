@@ -1,11 +1,12 @@
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const config = require('../src/config');
 
 // ============================================================================
 // CONFIGURACIÓN DE DATOS DEL PRODUCTO (GS1 DIGITAL LINK)
 // ============================================================================
-const DOMAIN = process.env.DOMAIN || 'https://dpp-mieldelbierzo.onrender.com'; // Dominio de producción en Render
+const DOMAIN = config.domain;
 const GTIN = '08412345678905';           // Código de producto
 const BATCH = 'L-2026-CAST01';          // Lote de la Miel del Bierzo
 

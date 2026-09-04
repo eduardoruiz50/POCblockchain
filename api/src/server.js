@@ -12,7 +12,6 @@ const mockRoutes = require('./routes/mockRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middlewares
 app.use(cors());

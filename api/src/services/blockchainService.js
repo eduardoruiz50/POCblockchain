@@ -1,13 +1,13 @@
 const { ethers } = require('ethers');
 const axios = require('axios'); // Para consultar los Mocks de SIEX y TRACES NT
-require('dotenv').config();
+const config = require('../config');
 
 // ============================================================================
 // CONFIGURACIÓN Y PROVEEDOR WEB3
 // ============================================================================
-const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS_1155;
-const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+const RPC_URL = config.blockchain.rpcUrl;
+const CONTRACT_ADDRESS = config.blockchain.contractAddress1155;
+const API_BASE_URL = config.apiBaseUrl;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
@@ -23,26 +23,26 @@ const abi1155 = [
 
 // Helper para inicialización perezosa / segura del Relayer
 function getRelayerWallet() {
-    const key = process.env.RELAYER_PRIVATE_KEY || process.env.APICULTOR_PRIVATE_KEY || process.env.PRIVATE_KEY;
+    const key = config.blockchain.relayerPrivateKey;
     if (!key) {
-        throw new Error("Clave privada del Relayer no configurada (RELAYER_PRIVATE_KEY)");
+        throw new Error("Clave privada del Relayer no configurada en .env (RELAYER_PRIVATE_KEY)");
     }
     return new ethers.Wallet(key, provider);
 }
 
 function getContractWithSigner() {
-    const address = process.env.CONTRACT_ADDRESS_1155 || process.env.CONTRACT_ADDRESS;
+    const address = config.blockchain.contractAddress1155;
     if (!address) {
-        throw new Error("Dirección del contrato ERC-1155 no configurada (CONTRACT_ADDRESS_1155)");
+        throw new Error("Dirección del contrato ERC-1155 no configurada en .env (CONTRACT_ADDRESS_1155)");
     }
     const wallet = getRelayerWallet();
     return new ethers.Contract(address, abi1155, wallet);
 }
 
 function getContractReadOnly() {
-    const address = process.env.CONTRACT_ADDRESS_1155 || process.env.CONTRACT_ADDRESS;
+    const address = config.blockchain.contractAddress1155;
     if (!address) {
-        throw new Error("Dirección del contrato ERC-1155 no configurada (CONTRACT_ADDRESS_1155)");
+        throw new Error("Dirección del contrato ERC-1155 no configurada en .env (CONTRACT_ADDRESS_1155)");
     }
     return new ethers.Contract(address, abi1155, provider);
 }
@@ -199,7 +199,7 @@ async function consultarDatosLoteYStock(loteId, apicultorWallet) {
         const tokenId = Number(result[0]);
 
         let stockActualApicultor = 0;
-        const targetWallet = apicultorWallet || (process.env.RELAYER_PRIVATE_KEY ? new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY).address : null);
+        const targetWallet = apicultorWallet || (config.blockchain.relayerPrivateKey ? new ethers.Wallet(config.blockchain.relayerPrivateKey).address : null);
         if (targetWallet) {
             stockActualApicultor = Number(await contractReadOnly.balanceOf(targetWallet, tokenId));
         }

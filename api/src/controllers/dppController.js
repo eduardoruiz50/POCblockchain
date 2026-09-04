@@ -1,5 +1,6 @@
 const blockchainService = require('../services/blockchainService');
 const { localFallbackDB } = require('./fase1RegistroController');
+const config = require('../config');
 
 // ============================================================================
 // RESOLVER GS1 DIGITAL LINK & CONSULTA DE PASAPORTE DIGITAL
@@ -27,7 +28,7 @@ exports.getDpp = async (req, res) => {
         tracesProofHash: onChainResult.tracesProofHash,
         dopCertHash: onChainResult.dopCertHash,
         ipfsURI: onChainResult.ipfsURI,
-        smartContractAddress: process.env.CONTRACT_ADDRESS_1155 || process.env.CONTRACT_ADDRESS || '0x(Configurado en .env)'
+        smartContractAddress: config.blockchain.contractAddress1155 || 'No configurado'
       };
     }
   } catch (err) {
@@ -48,7 +49,7 @@ exports.getDpp = async (req, res) => {
       tracesProofHash: local.tracesProofHash,
       dopCertHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
       ipfsURI: local.ipfsURI,
-      smartContractAddress: process.env.CONTRACT_ADDRESS_1155 || process.env.CONTRACT_ADDRESS || '0x(Simulado en Memoria)'
+      smartContractAddress: config.blockchain.contractAddress1155 || 'Simulado en Memoria'
     };
   }
 
@@ -65,7 +66,7 @@ exports.getDpp = async (req, res) => {
       tracesProofHash: "0x98a0f5a7b7410294e7734bbd82910f3c5b36486fa41e7d23e590059c11b15df1",
       dopCertHash: "0x78923a1f9e20cb647a98811d7c34b7f94b8e2cb5a87102b489a74cf4817e0411",
       ipfsURI: "ipfs://bafybeigx47xmj2l3qkm7v2y2pynfxs44u67aov3h3y33sq543wlzc5aqaq",
-      smartContractAddress: process.env.CONTRACT_ADDRESS_1155 || process.env.CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3'
+      smartContractAddress: config.blockchain.contractAddress1155 || '0x5FbDB2315678afecb367f032d93F642f64180aa3'
     };
   }
 

@@ -114,7 +114,7 @@ exports.registerFase1 = async (req, res) => {
         // 6. Respuesta al cliente / Apicultor
         return res.status(201).json({
             success: true,
-            message: "Fase 1 completada: Registro de lote y generación de DPP iniciada con Oráculos.",
+            message: "Fase 1 completada: Registro de lote y generación de DPP iniciada con verificacion de Oráculos.",
             loteId: loteId,
             mode: mode,
             gs1DigitalLinkUrl: `http://localhost:3000/01/${gtin}/10/${loteId}`,
