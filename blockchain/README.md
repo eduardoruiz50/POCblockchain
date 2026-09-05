@@ -8,6 +8,7 @@ Módulo de contratos inteligentes para el proyecto POCblockchain utilizando **So
 blockchain/
 ├── contracts/              # Contratos inteligentes en Solidity (.sol)
 │   └── MielBierzoDPP1155.sol # Contrato ERC-1155 del Pasaporte Digital (DPP)
+├── INFORME_SEGURIDAD.md    # Informe de auditoría y análisis estático de vulnerabilidades
 ├── scripts/                # Scripts de automatización y despliegue
 │   └── deploy.js
 ├── test/                   # Pruebas unitarias con Chai y Mocha

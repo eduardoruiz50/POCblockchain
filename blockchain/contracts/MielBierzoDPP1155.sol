@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title MielBierzoDPP1155
@@ -12,9 +12,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
  * - El Relayer (RELAYER_ROLE) orquesta y costea el gas de transacciones de minado y transferencias autorizadas.
  * - El Oráculo / Consejo Regulador (ORACULO_ROLE / CONSEJO_REGULADOR_ROLE) certifica lotes según dictamen de laboratorio.
  */
-contract MielBierzoDPP1155 is ERC1155, AccessControl {
-    using Strings for uint256;
-
+contract MielBierzoDPP1155 is ERC1155, AccessControl, ReentrancyGuard {
     // Roles del sistema
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     bytes32 public constant APICULTOR_ROLE = keccak256("APICULTOR_ROLE");
@@ -68,6 +66,10 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
      * @param consejoRegulador Dirección autorizada para auditar y certificar lotes DOP.
      */
     constructor(address admin, address relayer, address consejoRegulador) ERC1155("") {
+        require(admin != address(0), "Error: Admin direccion cero");
+        require(relayer != address(0), "Error: Relayer direccion cero");
+        require(consejoRegulador != address(0), "Error: Consejo direccion cero");
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         
         // Roles para el Relayer de la plataforma
@@ -83,6 +85,7 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
     /**
      * @notice Fase 1: Registro y Minado Masivo del Lote (Ejecutado por el Relayer o Apicultor).
      * @dev Genera un nuevo Token ID ERC-1155 con N unidades y las asigna a la wallet del apicultor.
+     * Aplica el patrón Checks-Effects-Interactions (CEI) y nonReentrant para mitigar vulnerabilidades de reentrancia.
      */
     function mintDPPBatch(
         address apicultor,
@@ -92,21 +95,21 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
         string calldata ipfsURI,
         bytes32 regaProofHash,
         bytes32 tracesProofHash
-    ) external returns (uint256) {
+    ) external nonReentrant returns (uint256) {
         require(
             hasRole(RELAYER_ROLE, msg.sender) || hasRole(APICULTOR_ROLE, msg.sender),
             "Error: Requiere rol RELAYER_ROLE o APICULTOR_ROLE"
         );
+        require(apicultor != address(0), "Error: Apicultor direccion cero");
+        require(bytes(loteId).length > 0, "Error: LoteID no puede ser vacio");
         require(loteToTokenId[loteId] == 0, "Error: El LoteID ya ha sido registrado previamente");
         require(cantidadTarros > 0, "Error: La cantidad de tarros debe ser mayor que cero");
+        require(bytes(ipfsURI).length > 0, "Error: IPFS URI no puede ser vacio");
 
         _tokenIdCounter++;
         uint256 newTokenId = _tokenIdCounter;
 
-        // Minado ERC-1155: Asigna 'cantidadTarros' tokens del 'newTokenId' a la wallet del apicultor
-        _mint(apicultor, newTokenId, cantidadTarros, "");
-
-        // Almacenamiento de metadatos de auditoría en estado 'PENDIENTE_CERTIFICACION'
+        // [EFECTOS DE ESTADO ANTES DE CUALQUIER INTERACCIÓN EXTERNA]
         lotes[newTokenId] = LoteDPP({
             loteId: loteId,
             gtin: gtin,
@@ -120,6 +123,9 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
 
         // Mapear la clave textual del Lote al identificador numérico de token
         loteToTokenId[loteId] = newTokenId;
+
+        // [INTERACCIÓN EXTERNA: Minado ERC-1155 que invoca hooks onERC1155Received]
+        _mint(apicultor, newTokenId, cantidadTarros, "");
 
         emit BatchMinted(newTokenId, loteId, gtin, cantidadTarros, apicultor);
 
@@ -143,6 +149,7 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
             hasRole(RELAYER_ROLE, msg.sender),
             "Error: No autorizado para certificar lote"
         );
+        require(dopCertHash != bytes32(0), "Error: Hash de certificado invalido");
 
         uint256 tokenId = loteToTokenId[loteId];
         require(tokenId != 0, "Error: El lote especificado no existe");
@@ -159,8 +166,16 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
     }
 
     /**
-     * @notice Fase 3 (Delegada): Transferencia gestionada por el Relayer.
-     * @dev Permite al Relayer mover tokens si el propietario lo aprobó previamente, o si es el Relayer quien opera la custodia.
+     * @notice Fase 3: Transferencia delegada de custodia operada por el Relayer.
+     * @dev Función administrativa que utiliza `_safeTransferFrom` para transferir tokens directamente
+     * sin requerir aprobación previa en cadena (`isApprovedForAll`). Este diseño permite al Relayer
+     * mover stock en nombre del apicultor abstrayendo la complejidad de MetaMask y el coste de gas.
+     * Restringido estrictamente a cuentas autorizadas con RELAYER_ROLE.
+     * @param from Dirección de origen desde la que se descuentan los tarros.
+     * @param to Dirección de destino (comercio, distribuidor o cliente final).
+     * @param id Token ID correspondiente al lote de miel.
+     * @param value Cantidad de unidades/tarros a transferir.
+     * @param data Datos adicionales pasados al receptor si es un contrato inteligente.
      */
     function relayerTransferFrom(
         address from,
@@ -169,7 +184,7 @@ contract MielBierzoDPP1155 is ERC1155, AccessControl {
         uint256 value,
         bytes calldata data
     ) external onlyRole(RELAYER_ROLE) {
-        // Ejecuta safeTransferFrom validando el estándar ERC-1155
+        // Ejecuta la transferencia directa de custodia validando la recepción en el destino (_safeTransferFrom)
         _safeTransferFrom(from, to, id, value, data);
     }
 

@@ -156,5 +156,39 @@ describe("MielBierzoDPP1155 Smart Contract (Relayer & Oráculo Architecture)", f
       expect(balTienda).to.equal(BigInt(cantidadATransferir));
       expect(balApicultor).to.equal(BigInt(cantidadTarros - cantidadATransferir));
     });
+
+    it("El Relayer debería poder transferir tarros usando relayerTransferFrom", async function () {
+      const cantidadATransferir = 50;
+
+      // El Relayer ejecuta la transferencia directamente mediante su rol autorizado
+      await contract.connect(relayer).relayerTransferFrom(
+        apicultor.address,
+        tienda.address,
+        1,
+        cantidadATransferir,
+        "0x"
+      );
+
+      const balTienda = await contract.balanceOf(tienda.address, 1);
+      const balApicultor = await contract.balanceOf(apicultor.address, 1);
+
+      expect(balTienda).to.equal(BigInt(cantidadATransferir));
+      expect(balApicultor).to.equal(BigInt(cantidadTarros - cantidadATransferir));
+    });
+
+    it("Debería rechazar relayerTransferFrom si un usuario sin RELAYER_ROLE intenta invocarlo", async function () {
+      const RELAYER_ROLE = await contract.RELAYER_ROLE();
+
+      await expect(
+        contract.connect(otroUsuario).relayerTransferFrom(
+          apicultor.address,
+          tienda.address,
+          1,
+          50,
+          "0x"
+        )
+      ).to.be.revertedWithCustomError(contract, "AccessControlUnauthorizedAccount")
+        .withArgs(otroUsuario.address, RELAYER_ROLE);
+    });
   });
 });

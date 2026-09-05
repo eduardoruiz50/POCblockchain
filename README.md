@@ -57,6 +57,7 @@ POCblockchain/
     ├── README.md                            # Documentación específica del módulo Blockchain
     ├── contracts/
     │   └── MielBierzoDPP1155.sol            # Contrato ERC-1155 del Pasaporte Digital (DPP)
+    ├── INFORME_SEGURIDAD.md                 # Informe de auditoría y análisis estático de vulnerabilidades
     ├── scripts/
     │   └── deploy.js                        # Script automatizado de despliegue
     └── test/

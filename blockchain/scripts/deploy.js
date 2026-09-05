@@ -13,6 +13,16 @@ async function main() {
   const relayerAddress = process.env.RELAYER_ADDRESS || defaultRelayer.address;
   const consejoAddress = process.env.CONSEJO_REGULADOR_ADDRESS || defaultConsejo.address;
 
+  if (!hre.ethers.isAddress(adminAddress)) {
+    throw new Error(`Dirección inválida para ADMIN_ADDRESS: ${adminAddress}. Asegúrate de usar una dirección pública (0x...) y no una clave privada.`);
+  }
+  if (!hre.ethers.isAddress(relayerAddress)) {
+    throw new Error(`Dirección inválida para RELAYER_ADDRESS: ${relayerAddress}`);
+  }
+  if (!hre.ethers.isAddress(consejoAddress)) {
+    throw new Error(`Dirección inválida para CONSEJO_REGULADOR_ADDRESS: ${consejoAddress}`);
+  }
+
   console.log(`👤 Admin / Owner: ${adminAddress}`);
   console.log(`⚡ Relayer (Operador Web3): ${relayerAddress}`);
   console.log(`🏛️ Consejo Regulador / Oráculo: ${consejoAddress}`);

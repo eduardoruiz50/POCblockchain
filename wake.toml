@@ -1,0 +1,4 @@
+[compiler.solc]
+evm_version = "cancun"
+include_paths = ["blockchain/node_modules"]
+exclude_paths = ["blockchain/node_modules", "node_modules", "blockchain/test"]
